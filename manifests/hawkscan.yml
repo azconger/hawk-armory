@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hawkscan
+  namespace: dev
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      containers:
+        - command:
+            - bash
+            - /script/runshawk.sh
+          env:
+            - name: API_KEY
+              value: hawk.<redacted>
+            - name: REPO_DIR
+              value: /home/zap/workdir
+          image: stackhawk/hawkscan
+          name: hawkscan
+          volumeMounts:
+            - mountPath: /config
+              name: config
+            - mountPath: /script
+              name: script
+      restartPolicy: Never
+      volumes:
+        - configMap:
+            name: hawkscan-config
+          name: config
+        - configMap:
+            name: hawkscan-script
+          name: script
+  ttlSecondsAfterFinished: 600
