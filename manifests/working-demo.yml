@@ -1,0 +1,412 @@
+{
+  "appConfig": {},
+  "expectedArtifacts": [
+  {
+    "defaultArtifact": {
+      "artifactAccount": "GitRepo",
+      "id": "acf45d65-e49a-484f-bedb-34ef1b9aebfa",
+      "reference": "https://github.com/zconger/hawk-armory.git",
+      "type": "git/repo",
+      "version": "master"
+    },
+    "displayName": "stackhawk-repo",
+    "id": "43d8ff08-a0d2-4140-a318-315d3b648ff5",
+    "matchArtifact": {
+      "artifactAccount": "GitRepo",
+      "id": "b8ebd7d3-45fe-4b2b-8afd-b8f76efd642e",
+      "reference": "https://github.com/zconger/hawk-armory.git",
+      "type": "git/repo",
+      "version": "master"
+    },
+    "useDefaultArtifact": true,
+    "usePriorArtifact": false
+  }
+  ],
+  "keepWaitingPipelines": false,
+  "lastModifiedBy": "away168",
+  "limitConcurrent": true,
+  "parameterConfig": [
+  {
+    "default": "monday",
+    "description": "",
+    "hasOptions": false,
+    "label": "",
+    "name": "tag",
+    "options": [
+    {
+      "value": ""
+    }
+    ],
+    "pinned": true,
+    "required": true
+  },
+  {
+    "default": "4",
+    "description": "",
+    "hasOptions": false,
+    "label": "",
+    "name": "prod_count",
+    "options": [
+    {
+      "value": ""
+    }
+    ],
+    "pinned": true,
+    "required": true
+  },
+  {
+    "default": "yes",
+    "description": "Whether to deploy to test on the way to prod",
+    "hasOptions": true,
+    "label": "",
+    "name": "deploy_test",
+    "options": [
+    {
+      "value": "yes"
+    },
+    {
+      "value": "no"
+    }
+    ],
+    "pinned": false,
+    "required": true
+  }
+  ],
+  "spelEvaluator": "v4",
+  "stages": [
+  {
+    "account": "dev-us-west-2",
+    "cloudProvider": "kubernetes",
+    "manifests": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "hello-today"
+      },
+      "spec": {
+        "replicas": 3,
+        "selector": {
+          "matchLabels": {
+            "app": "hello-today"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "hello-today"
+            }
+          },
+          "spec": {
+            "containers": [
+            {
+              "image": "justinrlee/nginx:${parameters[\"tag\"]}",
+              "name": "primary",
+              "ports": [
+              {
+                "containerPort": 80
+              }
+              ]
+            }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "hello-today"
+      },
+      "spec": {
+        "ports": [
+        {
+          "port": 80,
+          "protocol": "TCP",
+          "targetPort": 80
+        }
+        ],
+        "selector": {
+          "app": "hello-today"
+        },
+        "type": "ClusterIP"
+      }
+    }
+    ],
+    "moniker": {
+      "app": "stackhawk"
+    },
+    "name": "Deploy Dev",
+    "namespaceOverride": "dev",
+    "refId": "1",
+    "requisiteStageRefIds": [
+      "9"
+    ],
+    "skipExpressionEvaluation": false,
+    "source": "text",
+    "trafficManagement": {
+      "enabled": false,
+      "options": {
+        "enableTraffic": false
+      }
+    },
+    "type": "deployManifest"
+  },
+  {
+    "completeOtherBranchesThenFail": true,
+    "continuePipeline": false,
+    "failPipeline": false,
+    "instructions": "See if it works first in dev, but yeah.",
+    "judgmentInputs": [],
+    "name": "Manual Judgment: Deploy to Test",
+    "notifications": [],
+    "refId": "2",
+    "requisiteStageRefIds": [
+      "1"
+    ],
+    "type": "manualJudgment"
+  },
+  {
+    "account": "spinnaker",
+    "cloudProvider": "kubernetes",
+    "manifests": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "hello-today"
+      },
+      "spec": {
+        "replicas": 3,
+        "selector": {
+          "matchLabels": {
+            "app": "hello-today"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "hello-today",
+              "lb": "hello-today"
+            }
+          },
+          "spec": {
+            "containers": [
+            {
+              "image": "justinrlee/nginx:${parameters[\"tag\"]}",
+              "name": "primary",
+              "ports": [
+              {
+                "containerPort": 80
+              }
+              ]
+            }
+            ]
+          }
+        }
+      }
+    }
+    ],
+    "moniker": {
+      "app": "hello-today"
+    },
+    "name": "Deploy Test",
+    "namespaceOverride": "test",
+    "refId": "3",
+    "requisiteStageRefIds": [
+      "2",
+      "10"
+    ],
+    "skipExpressionEvaluation": false,
+    "source": "text",
+    "stageEnabled": {
+      "expression": "${parameters['deploy_test'] == 'yes'}",
+      "type": "expression"
+    },
+    "trafficManagement": {
+      "enabled": false,
+      "options": {
+        "enableTraffic": false,
+        "services": []
+      }
+    },
+    "type": "deployManifest"
+  },
+  {
+    "failPipeline": true,
+    "instructions": "Check and make sure it works in Test, but yeah.",
+    "judgmentInputs": [],
+    "name": "Manual Judgment: Deploy to Prod",
+    "notifications": [],
+    "refId": "4",
+    "requisiteStageRefIds": [
+      "3"
+    ],
+    "type": "manualJudgment"
+  },
+  {
+    "account": "spinnaker",
+    "cloudProvider": "kubernetes",
+    "manifests": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "metadata": {
+        "name": "hello-today"
+      },
+      "spec": {
+        "replicas": "${ #toInt( parameters.prod_count ) }",
+        "selector": {
+          "matchLabels": {
+            "app": "hello-today"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "hello-today"
+            }
+          },
+          "spec": {
+            "containers": [
+            {
+              "image": "justinrlee/nginx:${parameters[\"tag\"]}",
+              "name": "primary",
+              "ports": [
+              {
+                "containerPort": 80,
+                "protocol": "TCP"
+              }
+              ]
+            }
+            ]
+          }
+        }
+      }
+    }
+    ],
+    "moniker": {
+      "app": "hello-today"
+    },
+    "name": "Deploy Prod",
+    "namespaceOverride": "prod",
+    "refId": "6",
+    "requisiteStageRefIds": [
+      "4"
+    ],
+    "skipExpressionEvaluation": false,
+    "source": "text",
+    "trafficManagement": {
+      "enabled": true,
+      "options": {
+        "enableTraffic": true,
+        "namespace": "prod",
+        "services": [
+          "service hello-today"
+        ],
+        "strategy": "redblack"
+      }
+    },
+    "type": "deployManifest"
+  },
+  {
+    "account": "spinnaker",
+    "app": "hello-today",
+    "cloudProvider": "kubernetes",
+    "location": "spinnaker",
+    "manifestName": "job hawkscan",
+    "mode": "static",
+    "name": "HawkScan Cleanup",
+    "options": {
+      "cascading": true
+    },
+    "refId": "8",
+    "requisiteStageRefIds": [
+      "1"
+    ],
+    "type": "deleteManifest"
+  },
+  {
+    "failOnFailedExpressions": true,
+    "name": "Get Artifact",
+    "refId": "9",
+    "requisiteStageRefIds": [],
+    "type": "evaluateVariables",
+    "variables": [
+    {
+      "key": "artifact",
+      "value": "${#toJson(trigger.artifacts.^[type==\"git/repo\"])}"
+    }
+    ]
+  },
+  {
+    "account": "spinnaker",
+    "alias": "runJob",
+    "application": "stackhawk",
+    "cloudProvider": "kubernetes",
+    "consumeArtifactSource": "none",
+    "credentials": "spinnaker",
+    "manifest": {
+      "apiVersion": "batch/v1",
+      "kind": "Job",
+      "metadata": {
+        "name": "hawkscan",
+        "namespace": "spinnaker"
+      },
+      "spec": {
+        "backoffLimit": 0,
+        "template": {
+          "spec": {
+            "containers": [
+            {
+              "env": [
+              {
+                "name": "API_KEY",
+                "value": "hawk.<redacted>"
+              },
+              {
+                "name": "REPO_DIR",
+                "value": "/home/zap/workdir"
+              },
+              {
+                "name": "ENV",
+                "value": "Preprod"
+              },
+              {
+                "name": "ARTIFACT_JSON",
+                "value": "${artifact}"
+              }
+              ],
+              "image": "zconger/hawkscan:spinnaker-0.1",
+              "name": "hawkscan"
+            }
+            ],
+            "restartPolicy": "Never"
+          }
+        },
+        "ttlSecondsAfterFinished": 600
+      }
+    },
+    "name": "HawkScan",
+    "propertyFile": null,
+    "refId": "10",
+    "requisiteStageRefIds": [
+      "1",
+      "8"
+    ],
+    "source": "text",
+    "type": "runJobManifest"
+  }
+  ],
+  "triggers": [
+  {
+    "enabled": true,
+    "expectedArtifactIds": [
+      "43d8ff08-a0d2-4140-a318-315d3b648ff5"
+    ],
+    "type": "webhook"
+  }
+  ],
+  "updateTs": "1596210646000"
+}
