@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 
-#cp /config/stackhawk.yml ./
-
+# Create a repository directory
 mkdir -p ${REPO_DIR}
+git clone ${REPO_URL} ${REPO_DIR}
 cd "${REPO_DIR}"
-git clone ${REPO_URL} repo
-cd repo
 
 shawk
