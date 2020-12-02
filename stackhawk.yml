@@ -1,4 +1,4 @@
 app:
   applicationId: bc0992a0-f455-430a-ad9c-444b2de05395
   host: http://hello-today.dev
-  env: Development
+  env: ${APP_ENV:Development}
