@@ -1,0 +1,269 @@
+{
+  "appConfig": {},
+  "expectedArtifacts": [],
+  "keepWaitingPipelines": false,
+  "lastModifiedBy": "away168",
+  "limitConcurrent": true,
+  "parameterConfig": [
+    {
+      "default": "Bird Person",
+      "description": "",
+      "hasOptions": false,
+      "label": "",
+      "name": "user",
+      "options": [
+        {
+          "value": ""
+        }
+      ],
+      "pinned": true,
+      "required": false
+    }
+  ],
+  "spelEvaluator": "v4",
+  "stages": [
+    {
+      "account": "dev-us-west-2",
+      "cloudProvider": "kubernetes",
+      "manifests": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "metadata": {
+            "name": "rps"
+          },
+          "spec": {
+            "replicas": 1,
+            "selector": {
+              "matchLabels": {
+                "app": "rps"
+              }
+            },
+            "template": {
+              "metadata": {
+                "labels": {
+                  "app": "rps"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "env": [
+                      {
+                        "name": "RPS_USER",
+                        "value": "${parameters.user}"
+                      }
+                    ],
+                    "image": "away168/rps:v0.1.1",
+                    "name": "rps",
+                    "ports": [
+                      {
+                        "containerPort": 80
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "apiVersion": "v1",
+          "kind": "Service",
+          "metadata": {
+            "name": "rps"
+          },
+          "spec": {
+            "ports": [
+              {
+                "port": 80,
+                "protocol": "TCP",
+                "targetPort": 80
+              }
+            ],
+            "selector": {
+              "app": "rps"
+            },
+            "type": "LoadBalancer"
+          }
+        }
+      ],
+      "moniker": {
+        "app": "stackhawk"
+      },
+      "name": "Deploy Dev",
+      "namespaceOverride": "dev",
+      "refId": "1",
+      "requisiteStageRefIds": [],
+      "skipExpressionEvaluation": false,
+      "source": "text",
+      "trafficManagement": {
+        "enabled": false,
+        "options": {
+          "enableTraffic": false
+        }
+      },
+      "type": "deployManifest"
+    },
+    {
+      "failPipeline": true,
+      "instructions": "Check  <a href=\"https://app.stackhawk.com/scans\">HawkScan UI</a>",
+      "judgmentInputs": [],
+      "name": "Manual Judgment - Review HawkScan",
+      "notifications": [],
+      "refId": "4",
+      "requisiteStageRefIds": [
+        "10"
+      ],
+      "type": "manualJudgment"
+    },
+    {
+      "account": "prod-us-west-2",
+      "cloudProvider": "kubernetes",
+      "manifests": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "metadata": {
+            "name": "rps"
+          },
+          "spec": {
+            "replicas": 1,
+            "selector": {
+              "matchLabels": {
+                "app": "rps"
+              }
+            },
+            "template": {
+              "metadata": {
+                "labels": {
+                  "app": "rps"
+                }
+              },
+              "spec": {
+                "containers": [
+                  {
+                    "image": "away168/rps:v0.1.1",
+                    "name": "rps",
+                    "ports": [
+                      {
+                        "containerPort": 80
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "apiVersion": "v1",
+          "kind": "Service",
+          "metadata": {
+            "name": "rps"
+          },
+          "spec": {
+            "ports": [
+              {
+                "port": 80,
+                "protocol": "TCP",
+                "targetPort": 80
+              }
+            ],
+            "selector": {
+              "app": "rps"
+            },
+            "type": "LoadBalancer"
+          }
+        }
+      ],
+      "moniker": {
+        "app": "hello-today"
+      },
+      "name": "Deploy Prod",
+      "namespaceOverride": "prod",
+      "refId": "6",
+      "requisiteStageRefIds": [
+        "4"
+      ],
+      "skipExpressionEvaluation": false,
+      "source": "text",
+      "trafficManagement": {
+        "enabled": false,
+        "options": {
+          "enableTraffic": true,
+          "strategy": "redblack"
+        }
+      },
+      "type": "deployManifest"
+    },
+    {
+      "account": "spinnaker",
+      "alias": "runJob",
+      "application": "stackhawk",
+      "cloudProvider": "kubernetes",
+      "consumeArtifactSource": "none",
+      "credentials": "spinnaker",
+      "manifest": {
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "metadata": {
+          "name": "hawkscan",
+          "namespace": "vincent"
+        },
+        "spec": {
+          "backoffLimit": 0,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "env": [
+                    {
+                      "name": "API_KEY",
+                      "value": "hawk.TNhWdgHLNBAODZbIhBBn.EYaFKzQsA8q2IGOsoHVY"
+                    },
+                    {
+                      "name": "APP_ENV",
+                      "value": "Development"
+                    },
+                    {
+                      "name": "REPO_DIR",
+                      "value": "/home/zap/workdir"
+                    },
+                    {
+                      "name": "REPO_URL",
+                      "value": "https://github.com/zconger/hawk-armory.git"
+                    },
+                    {
+                      "name": "APP_HOST",
+                      "value": "http://rps.dev"
+                    }
+                  ],
+                  "image": "zconger/hawkscan:latest",
+                  "name": "hawkscan"
+                }
+              ],
+              "restartPolicy": "Never"
+            }
+          },
+          "ttlSecondsAfterFinished": 600
+        }
+      },
+      "name": "HawkScan",
+      "refId": "10",
+      "requisiteStageRefIds": [
+        "1"
+      ],
+      "source": "text",
+      "type": "runJobManifest"
+    }
+  ],
+  "triggers": [
+    {
+      "enabled": true,
+      "expectedArtifactIds": [],
+      "type": "webhook"
+    }
+  ],
+  "updateTs": "1606954316000"
+}
