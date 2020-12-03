@@ -3,5 +3,5 @@ app:
   host: ${APP_HOST:http://rps.dev}
   env: ${APP_ENV:Development}
 
-hawk:
-  failureThreshold: HIGH
+#hawk:
+#  failureThreshold: HIGH
