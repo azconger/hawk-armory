@@ -1,0 +1,45 @@
+---
+- hosts: all
+  remote_user: root
+  gather_facts: true
+
+  tasks:
+    - name: Create users
+      user:
+        name: zconger
+        shell: /usr/bin/bash
+        groups:
+          - sudo
+
+    - name: Allow 'sudo' group to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: '^%sudo'
+        line: '%sudo ALL=(ALL) NOPASSWD: ALL'
+        validate: visudo -cf %s
+
+    - name: Create user authorized keys
+      authorized_key:
+        user: "{{ item.name }}"
+        state: present
+        key: "{{ item.key }}"
+      loop:
+        - { name: 'zconger', key: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDfY8ecARL9qYPTI6Vy4xl15TRlg+65mMxhWJNTKclwcg7czGgTJ4xJ+d5CBU0IT0CEPrMBz5woLi4B+k3yg72frno9F9dR2ds+wjM6v/47KSMV7fKP5pyKBLsd3JPcGI79YwK6b4yTIViG0Vlfv2g/lICOw2ZBvH/1w9zWrpW4lKkSuZ5yV8MGiNc7z0hkH4SXuFIQR5R1TX2mnARUZPYKDGxItLci23zJVkG1dzwqWJmQlZURXYuXPcoMFYWYtFCKO2Uyh+akMb8DTktpc+BJ226ig8/okOQkqEijT/um9CCStTUucWK6UvtLQsAEiSIweA+GGu4SLWbrl5keZtT3 zconger' }
+
+    - name: Install packages
+      apt:
+        update_cache: true
+        state: latest
+        pkg:
+          - net-tools
+
+    - name: Set default editor to vi
+      community.general.alternatives:
+        name: editor
+        path: /usr/bin/vim.basic
+
+    - name: Set hostname
+      hostname:
+        name: minnaker
+
